@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vouch — selective disclosure for Avalanche Encrypted ERC</title>
+<meta name="description" content="Prove one fact about an encrypted eERC balance, to one named counterparty, without revealing the balance or handing over an auditor key.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..400&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#EEEDE8;
+  --panel:#F7F6F2;
+  --ink:#161920;
+  --slate:#5B6070;
+  --rule:#D6D4CC;
+  --bar:#171A21;
+  --bar-edge:#171A21;
+  --notary:#4737A8;
+  --notary-soft:#E2DEF5;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#13151A;
+    --panel:#1A1D24;
+    --ink:#ECEAE3;
+    --slate:#9AA0AE;
+    --rule:#2C3039;
+    --bar:#05070A;
+    --bar-edge:#2C3039;
+    --notary:#A99CF5;
+    --notary-soft:#272146;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#13151A; --panel:#1A1D24; --ink:#ECEAE3; --slate:#9AA0AE;
+  --rule:#2C3039; --bar:#05070A; --bar-edge:#2C3039;
+  --notary:#A99CF5; --notary-soft:#272146;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px);-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:17px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--paper);z-index:10}
+.wrap{max-width:860px;margin:0 auto;padding:0 28px}
+a{color:var(--notary)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--notary);outline-offset:3px;border-radius:2px}
+
+/* ---------- header ---------- */
+header{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:11;
+  background:var(--paper);border-bottom:1px solid var(--rule);
+}
+.bar{display:flex;align-items:baseline;gap:18px;max-width:860px;margin:0 auto;padding:14px 28px}
+.mark{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:-.015em}
+.bar nav{margin-left:auto;display:flex;gap:18px;font-size:14px}
+.bar nav a{color:var(--slate);text-decoration:none}
+.bar nav a:hover{color:var(--ink)}
+
+/* ---------- hero ---------- */
+.hero{padding:76px 0 68px}
+h1{
+  font-family:var(--serif);font-weight:400;
+  font-size:clamp(38px,6.4vw,62px);line-height:1.04;letter-spacing:-.022em;
+  margin:0 0 22px;max-width:15ch;
+}
+.lede{font-size:19px;color:var(--slate);max-width:56ch;margin:0 0 44px}
+
+/* ---------- the redacted statement ---------- */
+.doc{
+  background:var(--panel);border:1px solid var(--rule);
+  padding:28px 30px 26px;max-width:580px;
+  font-family:var(--mono);font-size:13.5px;
+}
+.doc .cap{
+  font-family:var(--sans);font-size:12px;font-weight:600;
+  color:var(--slate);margin:0 0 20px;
+}
+.row{display:flex;align-items:center;gap:16px;margin-bottom:11px}
+.key{color:var(--slate);width:94px;flex:none}
+.val{position:relative;flex:1;min-width:0;white-space:nowrap;overflow:hidden}
+.val span{opacity:1}
+.redact{
+  position:absolute;inset:-2px auto -2px 0;width:0;
+  background:var(--bar);border:1px solid var(--bar-edge);
+}
+.doc.run .redact{animation:wipe .34s cubic-bezier(.7,0,.3,1) forwards}
+.doc.run .r1{animation-delay:.55s}
+.doc.run .r2{animation-delay:.70s}
+.doc.run .r3{animation-delay:.85s}
+.doc.run .r4{animation-delay:1.0s}
+@keyframes wipe{from{width:0}to{width:100%}}
+.doc:not(.run) .redact{width:100%}
+
+.verdict{
+  display:flex;align-items:center;gap:14px;
+  margin-top:20px;padding-top:18px;border-top:1px solid var(--rule);
+}
+.claim{font-weight:500}
+.stamp{
+  margin-left:auto;font-family:var(--sans);font-size:12px;font-weight:600;
+  color:var(--notary);background:var(--notary-soft);
+  border:1px solid var(--notary);padding:3px 10px;
+}
+.caption{font-size:14px;color:var(--slate);margin:16px 0 0;max-width:52ch}
+@media (prefers-reduced-motion: reduce){
+  .doc.run .redact{animation:none;width:100%}
+}
+
+/* ---------- sections ---------- */
+section{padding:64px 0;border-top:1px solid var(--rule)}
+h2{
+  font-family:var(--serif);font-weight:400;font-size:clamp(27px,3.6vw,36px);
+  line-height:1.15;letter-spacing:-.016em;margin:0 0 20px;max-width:22ch;
+}
+h3{font-size:16px;font-weight:600;margin:32px 0 8px}
+p{margin:0 0 18px;max-width:68ch}
+.big{font-family:var(--serif);font-size:23px;line-height:1.45;color:var(--ink);max-width:40ch}
+
+table{border-collapse:collapse;width:100%;margin:26px 0 8px;font-size:15px}
+th,td{text-align:left;padding:13px 16px 13px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:13px;font-weight:600;color:var(--slate)}
+td:last-child,th:last-child{padding-right:0}
+.scroller{overflow-x:auto}
+.no{color:var(--slate)}
+.yes{color:var(--notary);font-weight:500}
+
+pre{
+  background:var(--panel);border:1px solid var(--rule);
+  padding:20px 22px;overflow-x:auto;
+  font-family:var(--mono);font-size:13px;line-height:1.65;margin:24px 0;
+}
+code{font-family:var(--mono);font-size:.92em}
+p code,li code,td code{background:var(--panel);border:1px solid var(--rule);padding:1px 5px}
+
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:28px 0}
+ol.steps li{
+  counter-increment:s;position:relative;padding:0 0 22px 46px;
+  border-left:1px solid var(--rule);margin-left:11px;
+}
+ol.steps li:last-child{border-left-color:transparent;padding-bottom:0}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:-11px;top:0;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--paper);border:1px solid var(--rule);color:var(--slate);
+  font-family:var(--mono);font-size:11px;line-height:20px;text-align:center;
+}
+ol.steps b{display:block;font-weight:600;margin-bottom:2px}
+ol.steps span{color:var(--slate);font-size:15.5px}
+
+ul.plain{padding-left:20px;margin:0 0 18px}
+ul.plain li{margin-bottom:7px;max-width:66ch}
+
+.links{display:flex;flex-wrap:wrap;gap:12px;margin:28px 0 0}
+.links a{
+  font-size:14px;font-weight:500;text-decoration:none;
+  border:1px solid var(--ink);color:var(--ink);padding:9px 18px;
+}
+.links a:hover{background:var(--ink);color:var(--paper)}
+.links a.primary{background:var(--notary);border-color:var(--notary);color:#fff}
+.links a.primary:hover{filter:brightness(1.12)}
+
+footer{border-top:1px solid var(--rule);padding:30px 0 56px;font-size:14px;color:var(--slate)}
+footer p{max-width:62ch;margin:0 0 8px}
+.note{font-size:14px;color:var(--slate);border-left:2px solid var(--notary);padding:2px 0 2px 16px;margin:24px 0}
+@media (max-width:620px){
+  .key{width:72px}
+  .doc{font-size:12px;padding:22px 20px}
+  .bar nav{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <span class="mark">Vouch</span>
+    <nav>
+      <a href="#gap">The gap</a>
+      <a href="#how">How it works</a>
+      <a href="#honest">Limits</a>
+      <a href="#status">Status</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Prove one thing. Black out the rest.</h1>
+    <p class="lede">Vouch lets the holder of an encrypted Avalanche balance prove a single fact about it — to one named counterparty, once — without revealing the balance and without handing anyone an auditor key.</p>
+
+    <div class="doc run" id="doc">
+      <p class="cap">Statement presented to 0xBob — lender</p>
+      <div class="row"><span class="key">subject</span><span class="val"><span>0x7a3f…c219 · Alice Okonkwo</span><i class="redact r1"></i></span></div>
+      <div class="row"><span class="key">balance</span><span class="val"><span>14,208.55 USDC</span><i class="redact r2"></i></span></div>
+      <div class="row"><span class="key">history</span><span class="val"><span>62 transfers · 9 counterparties</span><i class="redact r3"></i></span></div>
+      <div class="row"><span class="key">positions</span><span class="val"><span>eERC #1, #4, #7</span><i class="redact r4"></i></span></div>
+      <div class="verdict">
+        <span class="claim">balance ≥ 1,000 USDC</span>
+        <span class="stamp">verified on chain</span>
+      </div>
+    </div>
+    <p class="caption">Bob learns that one line. Not the balance, not the history, not tomorrow’s balance. Carol replaying Bob’s proof is rejected.</p>
+  </div>
+
+</div>
+
+<section id="gap">
+  <div class="wrap">
+    <h2>eERC has two disclosure modes. Finance needs three.</h2>
+    <p>Avalanche’s Encrypted ERC is the strongest confidential-token primitive in production on any EVM chain. It encrypts balances and transfer amounts while keeping a path open for compliance. But it offers an account exactly two settings:</p>
+
+    <div class="scroller">
+    <table>
+      <tr><th>Mode</th><th>Who can see</th><th>How much</th></tr>
+      <tr><td>Default</td><td class="no">Nobody</td><td class="no">Nothing</td></tr>
+      <tr><td><code>AuditorManager</code></td><td>One designated auditor</td><td class="no">Everything, forever</td></tr>
+      <tr><td><b>Vouch</b></td><td class="yes">One named counterparty</td><td class="yes">One fact, once, until an expiry</td></tr>
+    </table>
+    </div>
+
+    <p>The consequence is sharper than it looks. The moment an encrypted balance has to deal with anyone who is not that auditor — a lender, an exchange, a landlord, an OTC desk, a regulator in a second jurisdiction, a grants committee — the holder chooses between revealing nothing and handing over the master key.</p>
+
+    <p class="big">Which is why nearly every eERC project so far is payroll. Payroll is the one case where the payer already knows the amount.</p>
+
+    <p>Everything else in finance runs on proving something to someone who should not see everything. Confidential money cannot participate in an economy it cannot prove anything to.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>How a statement works</h2>
+
+    <ol class="steps">
+      <li><b>The parties agree terms off chain</b><span>Subject, verifier, token, threshold, expiry, one-time nonce. Six fields, hashed together with the chain id into a binding.</span></li>
+      <li><b>The subject proves it locally</b><span>A Groth16 proof that their eERC balance clears the threshold. The key and the balance never leave their machine.</span></li>
+      <li><b>The verifier presents it</b><span>One transaction, paid by the party who wants the answer. The contract checks the proof against the ciphertext currently on chain and returns a single bit.</span></li>
+    </ol>
+
+    <p>Change any term and the proof fails. Present it from a different address and it fails. Present it twice and it fails. Present it after the expiry and it fails.</p>
+
+    <h3>Why this is a small build, not a moonshot</h3>
+    <p>The hard cryptography already exists on Avalanche and has already been audited. eERC’s <code>Withdraw</code> circuit <em>already</em> proves <code>balance ≥ amount</code> — it has to, before it will let you move funds. It simply couples that fact to a state change and then discards it.</p>
+
+    <pre>// circuits/balance_at_least.circom
+
+// 1. the prover controls the registered account
+component pk = BabyPbk();
+pk.in &lt;== senderPrivateKey;
+pk.Ax === senderPublicKey[0];
+
+// 2. correct ElGamal decryption:  b·G == C2 − sk·C1
+balPoint.Ax === diff.xout;
+
+// 3. the assertion
+component ge = GreaterEqThan(128);
+ge.in[0] &lt;== senderBalance;
+ge.in[1] &lt;== threshold;
+ge.out === 1;
+
+// 4. bound to one verifier, one deadline, one nonce
+contextSquared &lt;== contextHash * contextHash;</pre>
+
+    <p>Same curve, same proving system, same decryption check, same comparator — with the state change removed and a binding added. Ninety lines. The primitive Avalanche needs is sitting inside a circuit Avalanche already shipped. Nobody has pulled it out.</p>
+  </div>
+</section>
+
+<section id="types">
+  <div class="wrap">
+    <h2>Statement types</h2>
+    <div class="scroller">
+    <table>
+      <tr><th>Type</th><th>Claim</th><th>Status</th></tr>
+      <tr><td><code>BalanceAtLeast</code></td><td>Balance is at least T</td><td class="yes">Working</td></tr>
+      <tr><td><code>RangeBand</code></td><td>Balance sits in [A, B]</td><td class="no">Two comparators away</td></tr>
+      <tr><td><code>FlowAtLeast</code></td><td>Received at least T over N days</td><td class="no">Roadmap — needs an accumulator</td></tr>
+      <tr><td><code>FlowFromSet</code></td><td>Inflows came from k distinct payers</td><td class="no">Roadmap</td></tr>
+      <tr><td><code>Solvency</code></td><td>Assets exceed declared liabilities</td><td class="no">Roadmap</td></tr>
+    </table>
+    </div>
+    <p><code>FlowAtLeast</code> is the hard one and the valuable one: it turns a solvency check into income verification. Millions of people now earn in stablecoins and cannot prove that income to a lender, a landlord or an embassy without publishing their entire financial life to anyone who asks for a wallet address. <code>FlowFromSet</code> exists because otherwise you game <code>FlowAtLeast</code> by paying yourself in a loop.</p>
+  </div>
+</section>
+
+<section id="honest">
+  <div class="wrap">
+    <h2>What this does not do</h2>
+    <p>A proof-of-concept that oversells itself is worse than one that does not exist, so plainly:</p>
+
+    <ul class="plain">
+      <li><b>No audit.</b> The contracts and circuits have not been reviewed by anyone.</li>
+      <li><b>The trusted setup is local only.</b> Phase 1 reuses the Hermez ceremony; phase 2 has a single contribution labelled as unsafe for production. A multi-party ceremony is a funded milestone, not a detail.</li>
+      <li><b>Statements are about now, not the past.</b> The contract reads the ciphertext currently stored in eERC and rejects anything stale. A statement therefore expires the instant the balance moves. Historical attestation needs a commitment accumulator — that is the harder half and it is not built.</li>
+      <li><b>Revocation cannot un-ring a bell.</b> A subject can burn an unused nonce. Nothing on chain can retract knowledge a verifier already has.</li>
+      <li><b>Presentation leaks a pattern.</b> The subject’s address, the verifier’s address and the threshold go on chain permanently. Someone who presents <code>balance ≥ 10,000</code> to five lenders in a week has published a shape, even though no lender saw a figure. Presenting through a relayer address is a v2 fix.</li>
+    </ul>
+
+    <p class="note">Vouch holds no keys, custodies no funds, and never writes to eERC. If it needed write access to eERC, the design would be wrong.</p>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <h2>Status</h2>
+    <p>Reference implementation, written and public: the circuit, the registry contract, the client SDK, an end-to-end demo script that includes a failed replay attempt, and a parity test asserting that the Solidity and TypeScript sides compute the same binding hash. Roughly 500 lines, all of it in the open — and none of it compiled, deployed or audited yet. That is the design made concrete, not a running system.</p>
+
+    <p>Next: get it compiling and deployed on Fuji, then adversarial circuit tests, <code>RangeBand</code>, a published SDK, a hosted verify page, the accumulator work behind <code>FlowAtLeast</code>, an independent circuit review, a real ceremony, and C-Chain mainnet.</p>
+
+    <h3>Built for Avalanche, and only possible there</h3>
+    <p>This cannot be ported. It extends eERC, which exists on Avalanche and nowhere else, and it points at the market Avalanche is winning — tokenized equities, tokenized Treasuries, institutional credit — all of which hit this exact wall the moment a counterparty needs to verify something without seeing a book. The version that matters longest term delivers statements across chains over Interchain Messaging: a bank on a permissioned L1 proving a fact to a counterparty on C-Chain without exposing the chain.</p>
+
+    <p>Vouch is additive. It makes every existing eERC application more useful and competes with none of them. If you are building on eERC and need a statement type that does not exist yet, open an issue.</p>
+
+    <div class="links">
+      <a class="primary" href="#how">Read the design</a>
+      <a href="#types">Statement types</a>
+      <a href="#honest">Known limits</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Vouch — selective disclosure for Avalanche Encrypted ERC. Proof-of-concept, MIT licensed, unaudited.</p>
+    <p>Built on <code>ava-labs/EncryptedERC</code>. Not affiliated with Ava Labs, AvaCloud or the Avalanche Foundation.</p>
+  </div>
+</footer>
+
+<script>
+// One orchestrated moment: the document arrives legible, then the
+// redaction lands. Shown already-redacted if motion is reduced, and
+// skipped entirely for anyone arriving mid-page.
+(function () {
+  var doc = document.getElementById('doc');
+  if (!doc) return;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { doc.classList.remove('run'); return; }
+})();
+</script>
+
+</body>
+</html>
